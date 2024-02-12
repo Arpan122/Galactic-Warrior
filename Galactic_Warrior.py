@@ -47,7 +47,7 @@ level_done = False
 fort_health = 5000
 fort_max = 5000
 run_i = 0
-spawn_delay = 1500
+spawn_delay = 1.5
 # Upgrade Levels
 spd_lvl = 1
 ammo_lvl = 1
@@ -194,10 +194,10 @@ class Player:
             self.spd = 5
             self.max_ammo = 40
             self.ammo = self.max_ammo
-            self.reload = .09
+            self.reload = .2
             self.max_health = 500
             self.health = self.max_health
-            self.cannon_reload = 10000
+            self.cannon_reload = 5
         elif self.type == "fighter-type2":
             self.img = player2
             self.lasers = 1
@@ -207,10 +207,10 @@ class Player:
             self.spd = 4
             self.max_ammo = 50
             self.ammo = self.max_ammo
-            self.reload = .12
+            self.reload = .4
             self.max_health = 750
             self.health = self.max_health
-            self.cannon_reload = 10000
+            self.cannon_reload = 5
         elif type == "heavy-boi":
             self.img = player3
             self.lasers = 1
@@ -220,10 +220,10 @@ class Player:
             self.spd = 3
             self.max_ammo = 70
             self.ammo = self.max_ammo
-            self.reload = .18
+            self.reload = .5
             self.max_health = 1250
             self.health = self.max_health
-            self.cannon_reload = 5000
+            self.cannon_reload = 3
         self.rect = self.img.get_rect()
         self.rect.centerx = x
         self.rect.centery = y
@@ -237,11 +237,10 @@ class Player:
         self.rocket_r = False
         self.cannon = False
         self.cannon_time = None
-        self.money = 1000000000000
+        self.money = 0
 
     def show_health(self):
-        health_bar = HealthBar(self.rect.x, self.rect.bottom + 10, self.img.get_width(), 7, self.health,
-                               self.max_health)
+        health_bar = HealthBar(self.rect.x, self.rect.bottom + 10, self.img.get_width(), 7, self.health, self.max_health)
         health_bar.update(self.health)
 
     def update(self):
@@ -313,6 +312,7 @@ class Player:
 
         if self.cannon == True and self.cannon_able:
             self.cannon_status = "Reloading"
+            print(self.cannon_time, self.cannon_reload, pygame.time.get_ticks())
             if wait(self.cannon_time, self.cannon_reload):
                 self.cannon_status = "Ready"
                 self.cannon = False
@@ -388,16 +388,19 @@ class Bullet(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.centerx = x
         self.rect.bottom = y
+        self.px = x + scroll[0]
+        self.py = y + scroll[1]
         self.speed = 9
 
     def update(self):
         global scroll, scroll_spd
-        self.rect.y -= scroll_spd[1] + (self.speed * dt) - scroll_spd[1]
-        self.rect.x -= scroll_spd[0]
+        self.py -= (self.speed * dt)
+        self.rect.bottom = self.py - scroll[1]
+        self.rect.centerx = self.px - scroll[0]
+
         if self.rect.y <= -1300 + scroll[1]:
             self.kill()
         if self.type == "rocket":
-
             particles.add_particles(self.rect.centerx, self.rect.centery + 30, [random.randint(-15, 15)/10, 1])
         if self.rect.x <= SCREEN_WIDTH and self.rect.right >= 0 and self.rect.bottom >= 0 and self.rect.y <= SCREEN_HEIGHT:
             screen.blit(self.image, self.rect)
@@ -416,7 +419,7 @@ class Enemy(pygame.sprite.Sprite):
             self.spd = 3
         elif self.type == "heavy-cruiser":
             self.img = pygame.image.load('assets/img/enemies/cruiser.png').convert_alpha()
-            self.img = pygame.transform.scale(self.img, (100, 125))
+            self.img = pygame.transform.scale(self.img, (175, 125 * 1.75))
             self.health = 500
             self.max_health = 500
             self.spd = 1.5
@@ -428,9 +431,9 @@ class Enemy(pygame.sprite.Sprite):
             self.spd = 2.4
         elif self.type == "battleship":
             self.img = pygame.image.load('assets/img/enemies/battleship.png').convert_alpha()
-            self.img = pygame.transform.scale(self.img, (100, 100))
-            self.health = 140
-            self.max_health = 140
+            self.img = pygame.transform.scale(self.img, (125, 125))
+            self.health = 300
+            self.max_health = 300
             self.spd = 1.8
         elif self.type == 'mothership':
             self.img = pygame.image.load('assets/img/enemies/mothership.png').convert_alpha()
@@ -464,11 +467,11 @@ class Enemy(pygame.sprite.Sprite):
                 self.show_bar()
                 screen.blit(self.image, self.rect)
             if pygame.sprite.spritecollide(self, laser_group, True):
-                self.health -= 38
+                self.health -= 35
             if pygame.sprite.spritecollide(self, cannon_group, True):
-                self.health -= 140
+                self.health -= 100
             if pygame.sprite.spritecollide(self, rocket_group, True):
-                self.health -= 38 * 4
+                self.health -= 200
             if self.rect.colliderect(player.rect):
                 player.health -= self.max_health // 10
                 self.health -= 10
@@ -482,9 +485,6 @@ class Enemy(pygame.sprite.Sprite):
         global scroll_spd, fort_health
         self.py += self.spd * dt
 
-        """self.rect.y += self.spd * dt - scroll_spd[1]
-        self.rect.x = self.tx - scroll[0]
-        self.py += self.spd * dt"""
         if self.rect.top >= 600 - scroll[1]:
             fort_health -= self.health
             self.kill()
@@ -680,32 +680,33 @@ def info_screen():
     elif info_page == 2:
         text("You can choose between 3 ships:", font30, pygame.Color('Coral'), 100, 150)
 
-        screen.blit(player1, (110, 220))
-        screen.blit(player2, (370, 220))
-        screen.blit(player3, (650, 220))
+        screen.blit(player1, (100 - 15, 220))
+        screen.blit(player2, (370 - 15, 220))
+        screen.blit(player3, (640 - 15, 220 - 20))
 
-        text("The type-1 fighter can", font20, pygame.Color('Coral'), 60 + 10, 345)
-        text("shoot 2 lasers and is fast ", font20, pygame.Color('Coral'), 50 + 10, 370)
-        text("but has no cannons or rockets", font20, pygame.Color('Coral'), 35 + 10, 395)
+        text("The type-1 fighter can", font20, pygame.Color('Coral'), 60 - 15, 345)
+        text("shoot 2 lasers and is fast ", font20, pygame.Color('Coral'), 50 - 15, 370)
+        text("but has no cannons or", font20, pygame.Color('Coral'), 60 - 15, 395)
+        text("rockets", font20, pygame.Color('Coral'), 115 - 15, 395 + 25)
 
-        text("The type-2 fighter shoots", font20, pygame.Color('Coral'), 330, 345)
-        text("1 laser and is slower but", font20, pygame.Color('Coral'), 330, 370)
-        text("but has a cannon", font20, pygame.Color('Coral'), 360, 395)
-        text("and more health", font20, pygame.Color('Coral'), 365, 395 + 25)
+        text("The type-2 fighter shoots", font20, pygame.Color('Coral'), 320 - 15, 345)
+        text("1 laser and is slower but", font20, pygame.Color('Coral'), 320 - 15, 370)
+        text("but has a cannon", font20, pygame.Color('Coral'), 350 - 15, 395)
+        text("and more health", font20, pygame.Color('Coral'), 355 - 15, 395 + 25)
 
-        text("The freighter has alot", font20, pygame.Color('Coral'), 600, 445 - 50)
-        text("of health and has a", font20, pygame.Color('Coral'), 615, 470 - 50)
-        text("cannon and 12 rockets", font20, pygame.Color('Coral'), 600, 495 - 50)
-        text("but is very slow", font20, pygame.Color('Coral'), 625, 520 - 50)
+        text("The freighter has alot", font20, pygame.Color('Coral'), 590 - 15, 445 - 70)
+        text("of health and has a", font20, pygame.Color('Coral'), 605 - 15, 470 - 70)
+        text("cannon and 12 rockets", font20, pygame.Color('Coral'), 590 - 15, 495 - 70)
+        text("but is very slow", font20, pygame.Color('Coral'), 615 - 15, 520 - 70)
     elif info_page == 3:
         text("There are many enemies:", font30, pygame.Color('Coral'), 100, 150)
         list_of_enemies = [enemies_list[0],
                            enemies_list[1],
                            enemies_list[2]
                            ]
-        say = [["SCOUT", "It's fast but has very little health"],
-               ["BOMBER", "Slower than the scout and has more health"],
-               ["BATTLESHIP", "Much slower than a bomber but has more health. Appears at wave 10"]]
+        say = [["SCOUT", "It's fast but has 75"],
+               ["BOMBER", "Slower than the scout but has 120 health"],
+               ["BATTLESHIP", "Much slower than a bomber but has 300 health. Appears at wave 10"]]
         for i, j in enumerate(list_of_enemies):
             img = pygame.transform.scale(j, (100, 100))
             screen.blit(img, (50, (i * 135) + 170))
@@ -726,15 +727,16 @@ def info_screen():
             text(i[0], font30, pygame.Color("Coral"), 175, (j * 150) + 195)
             text(i[1], font20, pygame.Color("Coral"), 175, (j * 150) + 225)
     elif info_page == 5:
-        say = [["LASER", "Your normal attack. You can have 1, 2 or even 3 shooting at the same time"],
-               ["CANNON", "Powerful plasma cannon doing big damage"],
-               ["MISSILE", "Good ol' missiles. No twist, just some old school missiles."]]
+        say = [["LASER", "Your normal attack. You can have 1, 2 or even 3 shooting at the same time."],
+               ["CANNON", "Powerful plasma cannon doing 100 damage"],
+               ["MISSILE", "Good ol' missiles. They deal 200 damage."]]
         for i, j in enumerate(bullets):
             img = pygame.transform.scale(j, (50, 100))
             screen.blit(img, (50, (i * 135) + 170))
         for j, i in enumerate(say):
             text(i[0], font30, pygame.Color("Coral"), 175, (j * 135) + 195)
             text(i[1], font20, pygame.Color("Coral"), 175, (j * 135) + 225)
+        text("Deals 35 damage.", font20, pygame.Color("Coral"), 175, 245)
 
 
 # Choose your ship
@@ -755,6 +757,9 @@ def choose():
         screen.blit(player1, (100, 240))
         screen.blit(player2, (350, 240))
         screen.blit(player3, (587.5 + 25, 220))
+        text("Type-1 fighter", font30, pygame.Color(0, 0, 0), 80, 350)
+        text("Type-2 fighter", font30, pygame.Color(0, 0, 0), 330, 350)
+        text("Freighter", font30, pygame.Color(0, 0, 0), 605, 375)
         if i[0].collidepoint(mouse_pos) and mouseClicked == False:
             if i[1] == 1 and pygame.mouse.get_pressed()[0] == 1:
                 player = Player(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2)
@@ -864,25 +869,25 @@ def upgrade():
         text("Cost: 600", font2, coral_clr, 220, 125)
         text("Info: Unlocks Cannon (press c)", font2, coral_clr, 220, 105 + (75 // 2))
 
-        text("Cost: 900", font2, coral_clr, 220, 200)
-        text("Info: Gives you 6 rockets (max: 30 rockets)", font2, coral_clr, 220, 180 + (75 // 2))
+        text("Cost: 450", font2, coral_clr, 220, 200)
+        text("Info: Gives you 3 rockets (max: 12 rockets)", font2, coral_clr, 220, 180 + (75 // 2))
         text(f"Rockets: {player.rockets}", font2, coral_clr, 220, 200 + (75 // 2))
 
         text("Cost: 400", font2, coral_clr, 220, 275)
         text("Info: Increases your speed (max level: 4)", font2, coral_clr, 220, 255 + (75 // 2))
-        text(f"Level: {spd_lvl}", font2, coral_clr, 220, 272 + (75 // 2))
+        text(f"Level: {spd_lvl}, Your current speed: {player.spd}", font2, coral_clr, 220, 272 + (75 // 2))
 
         text("Cost: 500", font2, coral_clr, 220, 350)
         text("Info: Gives your more total ammo (max level: 10)", font2, coral_clr, 220, 330 + (75 // 2))
-        text(f"Level: {ammo_lvl}", font2, coral_clr, 220, 330 + 17 + (75 // 2))
+        text(f"Level: {ammo_lvl}, Current Ammo: {player.ammo}", font2, coral_clr, 220, 330 + 17 + (75 // 2))
 
         text("Cost: 450", font2, coral_clr, 220, 350 + 75)
         text("Info: Reloads faster (max level: 8)", font2, coral_clr, 220, 330 + 75 + (75 // 2))
-        text(f"Level: {reload_lvl}", font2, coral_clr, 220, 330 + 75 + 17 + (75 // 2))
+        text(f"Level: {reload_lvl}, Laser Reload Spd: {player.reload:.3f} secs., Cannon Reload Spd: {player.cannon_reload:.1f} secs.", font2, coral_clr, 220, 330 + 75 + 17 + (75 // 2))
 
         text("Cost: 1000", font2, coral_clr, 220, 350 + 150)
         text("Info: Increases delay in spawning enemies (max level: 5)", font2, coral_clr, 220, 330 + 150 + (75 // 2))
-        text(f"Level: {delay_lvl}", font2, coral_clr, 220, 330 + 150 + 17 + (75 // 2))
+        text(f"Level: {delay_lvl}, Delay: {spawn_delay:.2f} secs.", font2, coral_clr, 220, 330 + 150 + 17 + (75 // 2))
 
         cannon_btn.update(screen, mouseClicked)
         rockets_btn.update(screen, mouseClicked)
@@ -896,40 +901,45 @@ def upgrade():
             player.money -= 600
             player.cannon_able = True
             player.cannon_status = "Ready"
-        elif rockets_btn.action and player.money >= 900 and player.rockets < 30:
-            player.money -= 900
-            player.rockets += 6
+        elif rockets_btn.action and player.money >= 900 and player.rockets <= 9:
+            player.money -= 450
+            player.rockets += 3
         elif ship_spd_btn.action and player.money >= 400 and spd_lvl < 4:
             player.money -= 400
-            player.spd += 1
+            player.spd += .75
             spd_lvl += 1
         elif ammo_btn.action and player.money >= 500 and ammo_lvl < 10:
-            player.max_ammo += 50
+            player.max_ammo += 35
             player.money -= 500
             ammo_lvl += 1
         elif reload_btn.action and player.money >= 450 and reload_lvl < 8:
-            player.reload -= .01
-            player.cannon_reload -= 500
+            player.reload -= 0.015
+            if (player.type == "heavy-boi"):
+                player.cannon_reload -= 0.1
+            else:
+                player.cannon_reload -= 0.2
             player.money -= 450
             reload_lvl += 1
         elif delay_btn.action and player.money >= 1000 and delay_lvl < 5:
             player.money -= 1000
-            spawn_delay += 500
+            spawn_delay += 0.25
             delay_lvl += 1
         elif page_btn.action:
             upgrade_page += 1
 
+        if player.cannon_able:
+            cannon_btn.image = pygame.transform.scale(pygame.image.load("assets/img/buttons/maxed_img.png"), (100, 50))
         if player.rockets == 30:
             rockets_btn.image = pygame.transform.scale(pygame.image.load("assets/img/buttons/maxed_img.png"), (100, 50))
         if spd_lvl == 4:
-            ship_spd_btn.image = pygame.transform.scale(pygame.image.load("assets/img/buttons/maxed_img.png"),
-                                                        (100, 50))
+            ship_spd_btn.image = pygame.transform.scale(pygame.image.load("assets/img/buttons/maxed_img.png"), (100, 50))
         if ammo_lvl == 10:
             ammo_btn.image = pygame.transform.scale(pygame.image.load("assets/img/buttons/maxed_img.png"), (100, 50))
         if reload_lvl == 8:
             reload_btn.image = pygame.transform.scale(pygame.image.load("assets/img/buttons/maxed_img.png"), (100, 50))
         if delay_lvl == 5:
             delay_btn.image = pygame.transform.scale(pygame.image.load("assets/img/buttons/maxed_img.png"), (100, 50))
+
     elif upgrade_page == 2:
         text("Cost: 500", font2, coral_clr, 220, 125)
         text("Info: Repairs the fort", font2, coral_clr, 220, 105 + (75 // 2))
@@ -1096,7 +1106,7 @@ while True:
                 # Update enemy groups
 
                 # Wave Generator
-                if level_difficulty < target_difficulty and level_done == False and pygame.time.get_ticks() - lt >= spawn_delay:
+                if level_difficulty < target_difficulty and level_done == False and wait(lt, spawn_delay):
                     lt = pygame.time.get_ticks()
                     enemy_num = random.randint(1, 5)
                     if enemy_num == 1:
